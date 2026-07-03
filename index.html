@@ -5,56 +5,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>fb-live-monitor</title>
+    <!-- Sharp, readable monospace font for that boxy utility tool feel -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #121214;
-            --panel-bg: #1a1a1e;
-            --border-color: #2c2c35;
-            --accent-green: #22c55e;
-            --accent-blue: #3b82f6;
-            --text-main: #e4e4e7;
-            --text-muted: #a1a1aa;
+            --bg-color: #000000;
+            --card-bg: #111111;
+            --border-color: #ffffff;
+            --accent-blue: #0055ff;
+            --accent-green: #00ff66;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+            --font-mono: 'JetBrains Mono', monospace;
         }
 
-        html,
         body {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            font-family: 'Roboto Mono', monospace;
+            background-color: var(--bg-color);
+            font-family: var(--font-mono);
             color: var(--text-main);
             overflow: hidden;
-            box-sizing: border-box;
+            height: 100vh;
+            width: 100vw;
         }
 
-        #status-alert {
-            background: #ef4444;
-            color: #fff;
-            padding: 12px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 0.9rem;
-            display: none;
-            width: 100%;
-            box-sizing: border-box;
+        /* Borderless Full-Page Responsive Wrapper */
+        .video-container {
             position: fixed;
             top: 0;
             left: 0;
-            z-index: 999;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-        }
-
-        .video-container {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
+            z-index: 1;
             background: #000;
         }
 
@@ -65,228 +50,264 @@
             display: block;
         }
 
-        /* Overlay Console Box - Top Right */
-        .console-overlay {
+        /* Top-Right Overlay Notification Stack */
+        #notification-stack {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
+            top: 15px;
+            right: 15px;
+            z-index: 2000;
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
-            gap: 6px;
+            gap: 8px;
             pointer-events: none;
-            /* Let clicks pass through to video */
-            max-width: 400px;
-            font-size: 0.8rem;
-            text-align: right;
+            max-width: 380px;
+            width: calc(100% - 30px);
         }
 
-        .log-entry {
-            background: rgba(9, 9, 11, 0.85);
-            border: 1px solid rgba(44, 44, 53, 0.7);
-            backdrop-filter: blur(4px);
-            color: var(--accent-green);
-            padding: 6px 12px;
-            border-radius: 4px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            animation: fadeIn 0.3s ease forwards;
-            transition: opacity 1s ease, transform 1s ease;
-        }
-
-        .log-entry.fade-out {
+        .console-toast {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px 14px;
+            font-size: 12px;
+            line-height: 1.4;
+            border-radius: 0px;
+            /* Completely Boxy */
+            box-shadow: 4px 4px 0px rgba(255, 255, 255, 0.2);
             opacity: 0;
-            transform: translateY(-10px);
+            transform: translateY(-5px);
+            animation: toastEnter 0.2s forwards;
+            word-break: break-all;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
+        .console-toast.alert-stream {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+            background: #001105;
+            box-shadow: 4px 4px 0px rgba(0, 255, 102, 0.2);
+            font-weight: 700;
+        }
 
+        .console-toast.fade-out {
+            animation: toastExit 0.2s forwards;
+        }
+
+        @keyframes toastEnter {
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
 
-        /* Floating Controls Container at Bottom Right */
-        .floating-controls {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            display: flex;
-            gap: 10px;
+        @keyframes toastExit {
+            to {
+                opacity: 0;
+                transform: translateX(20px);
+            }
         }
 
-        .control-btn {
-            width: 45px;
-            height: 45px;
-            border-radius: 8px;
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border-color);
+        /* Floating Utilities Bar */
+        .fab-container {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            z-index: 1000;
+            display: flex;
+            gap: 0px;
+            /* Merged block look */
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 0px;
+            /* Completely Boxy */
+            box-shadow: 4px 4px 0px rgba(255, 255, 255, 0.2);
+            opacity: 0.4;
+            transition: opacity 0.2s ease;
+        }
+
+        .fab-container:hover {
+            opacity: 1;
+        }
+
+        .floating-btn {
+            width: 40px;
+            height: 40px;
+            background-color: transparent;
+            border: none;
             color: var(--text-main);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s ease;
+            transition: background-color 0.1s;
             outline: none;
+            border-radius: 0px;
         }
 
-        .control-btn:hover {
-            border-color: var(--text-muted);
-            background: #222227;
-            color: #fff;
+        /* Simple vertical divider between controls */
+        .floating-btn:not(:last-child) {
+            border-right: 2px solid var(--border-color);
         }
 
-        .control-btn svg {
-            width: 20px;
-            height: 20px;
+        .floating-btn:hover {
+            background-color: #222222;
+        }
+
+        .floating-btn svg {
+            width: 16px;
+            height: 16px;
             fill: none;
             stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+            stroke-width: 2.5;
+            stroke-linecap: square;
+            stroke-linejoin: miter;
         }
 
-        /* Modal/Popup Styling */
+        /* Modal Boxy Dialog Box */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 2000;
+            background: rgba(0, 0, 0, 0.85);
             display: flex;
             align-items: center;
             justify-content: center;
-            visibility: hidden;
+            z-index: 3000;
             opacity: 0;
-            transition: all 0.2s ease;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
         }
 
         .modal-overlay.active {
-            visibility: visible;
             opacity: 1;
+            pointer-events: auto;
         }
 
         .modal-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            width: 100%;
-            max-width: 450px;
-            border-radius: 8px;
-            padding: 25px;
-            box-sizing: border-box;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 0px;
+            /* Completely Boxy */
+            padding: 20px;
+            width: 90%;
+            max-width: 360px;
+            box-shadow: 8px 8px 0px rgba(255, 255, 255, 0.15);
         }
 
-        .modal-card h2 {
+        .modal-card h3 {
             margin-top: 0;
-            font-size: 1.1rem;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-            color: #fff;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 16px;
         }
 
         .form-group label {
             display: block;
-            font-size: 0.8rem;
+            font-size: 11px;
+            font-weight: 700;
             color: var(--text-muted);
             margin-bottom: 6px;
+            text-transform: uppercase;
         }
 
         .form-group input {
             width: 100%;
-            background: #09090b;
-            border: 1px solid var(--border-color);
-            padding: 10px;
             box-sizing: border-box;
-            color: #fff;
-            font-family: inherit;
-            font-size: 0.9rem;
-            border-radius: 4px;
+            background: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 0px;
+            /* Completely Boxy */
+            padding: 8px 10px;
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            outline: none;
         }
 
         .form-group input:focus {
-            outline: none;
+            background: #050505;
             border-color: var(--accent-blue);
         }
 
         .modal-actions {
-            margin-top: 20px;
             display: flex;
             justify-content: flex-end;
-            gap: 10px;
+            margin-top: 20px;
         }
 
-        .btn-primary {
-            background: var(--accent-blue);
-            color: #fff;
-            border: none;
-            padding: 8px 16px;
-            font-family: inherit;
-            font-size: 0.9rem;
-            border-radius: 4px;
+        .btn-save {
+            background: var(--bg-color);
+            color: var(--text-main);
+            border: 2px solid var(--border-color);
+            border-radius: 0px;
+            /* Completely Boxy */
+            padding: 8px 14px;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
             cursor: pointer;
+            font-size: 12px;
+            box-shadow: 3px 3px 0px rgba(255, 255, 255, 0.2);
+            transition: transform 0.05s, box-shadow 0.05s;
         }
 
-        .btn-primary:hover {
-            background: #2563eb;
+        .btn-save:hover {
+            background: var(--text-main);
+            color: var(--bg-color);
+        }
+
+        .btn-save:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
 
 <body>
 
-    <div id="status-alert">🚨 STREAM UPDATED! Loading New Live Feed...</div>
+    <!-- Overlay Log Output Screen Area -->
+    <div id="notification-stack"></div>
 
+    <!-- Fullscreen Borderless Frame Viewport -->
     <div id="fb-live-wrapper" class="video-container"></div>
 
-    <!-- Log entry stack directly in front of the video player -->
-    <div id="console-overlay" class="console-overlay"></div>
-
-    <!-- Floating UI Controls Stack -->
-    <div class="floating-controls">
-        <button id="open-settings-btn" class="control-btn" title="Edit Configuration Matrices">
+    <!-- Floating Interface Utilities -->
+    <div class="fab-container">
+        <button id="open-settings" class="floating-btn" title="EDIT CONFIGURATIONS">
             <svg viewBox="0 0 24 24">
-                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
             </svg>
         </button>
-        <button id="manual-refresh" class="control-btn" title="Force Refresh Stream Check">
+        <button id="manual-refresh" class="floating-btn" title="FORCE REFRESH STREAM CHECK">
             <svg viewBox="0 0 24 24">
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
             </svg>
         </button>
     </div>
 
-    <!-- Configuration Modal Setup -->
-    <div class="modal-overlay" id="settings-modal">
+    <!-- Settings Dialog -->
+    <div id="config-modal" class="modal-overlay">
         <div class="modal-card">
-            <h2>System Configuration</h2>
+            <h3>fb-live-monitor config</h3>
             <div class="form-group">
-                <label for="cfg-fb-id">Facebook Page ID / Username</label>
-                <input type="text" id="cfg-fb-id" placeholder="e.g., dzrhnews">
+                <label for="input-proxy">Proxy Base URL</label>
+                <input type="text" id="input-proxy" placeholder="https://r.jina.ai/">
             </div>
             <div class="form-group">
-                <label for="cfg-reader-url">Reader URL Endpoint</label>
-                <input type="text" id="cfg-reader-url" placeholder="e.g., https://r.jina.ai/">
-            </div>
-            <div class="form-group">
-                <label for="cfg-api-key">Bearer API Key (Optional)</label>
-                <input type="password" id="cfg-api-key" placeholder="Leave blank if not required">
+                <label for="input-fb-user">Facebook Username</label>
+                <input type="text" id="input-fb-user" placeholder="ayaldev">
             </div>
             <div class="modal-actions">
-                <button class="btn-primary" id="save-settings-btn">Save & Apply</button>
+                <button id="btn-save-config" class="btn-save">Save & Apply</button>
             </div>
         </div>
     </div>
@@ -296,75 +317,31 @@
         let playbackRefreshCooldown = 0;
         let facebookPlaybackTimer = null;
 
-        let CONFIG = {
-            fbPageId: localStorage.getItem('monitor_fb_id') || '',
-            readerUrl: localStorage.getItem('monitor_reader_url') || 'https://r.jina.ai/',
-            apiKey: localStorage.getItem('monitor_api_key') || ''
-        };
+        let proxyBaseUrl = localStorage.getItem('cfg_proxy_base') || "https://r.jina.ai/";
+        let fbUsername = localStorage.getItem('cfg_fb_username') || "ayaldev";
 
-        const consoleOverlay = document.getElementById('console-overlay');
+        // Console Overlay Logger Utilities
+        function pushConsoleLog(message, isAlert = false) {
+            const stack = document.getElementById('notification-stack');
+            const toast = document.createElement('div');
+            toast.className = `console-toast ${isAlert ? 'alert-stream' : ''}`;
 
-        function logToConsole(msg) {
-            const timestamp = new Date().toLocaleTimeString();
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            toast.innerText = `[${timestamp}] ${message}`;
 
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            logEntry.innerHTML = `[${timestamp}] > ${msg}`;
+            stack.appendChild(toast);
 
-            // Append top down
-            consoleOverlay.appendChild(logEntry);
-
-            // Smoothly remove item after fade configuration interval
             setTimeout(() => {
-                logEntry.classList.add('fade-out');
-                setTimeout(() => {
-                    logEntry.remove();
-                }, 1000);
+                toast.classList.add('fade-out');
+                toast.addEventListener('animationend', () => toast.remove());
             }, 5000);
         }
-
-        const modal = document.getElementById('settings-modal');
-        function showModal() {
-            document.getElementById('cfg-fb-id').value = CONFIG.fbPageId;
-            document.getElementById('cfg-reader-url').value = CONFIG.readerUrl;
-            document.getElementById('cfg-api-key').value = CONFIG.apiKey;
-            modal.classList.add('active');
-        }
-
-        function hideModal() {
-            modal.classList.remove('active');
-        }
-
-        document.getElementById('open-settings-btn').addEventListener('click', showModal);
-        document.getElementById('save-settings-btn').addEventListener('click', () => {
-            const fbId = document.getElementById('cfg-fb-id').value.trim();
-            let rUrl = document.getElementById('cfg-reader-url').value.trim();
-            const aKey = document.getElementById('cfg-api-key').value.trim();
-
-            if (!fbId || !rUrl) {
-                alert('Facebook Page ID and Reader URL endpoint are required elements.');
-                return;
-            }
-
-            if (!rUrl.endsWith('/')) rUrl += '/';
-
-            localStorage.setItem('monitor_fb_id', fbId);
-            localStorage.setItem('monitor_reader_url', rUrl);
-            localStorage.setItem('monitor_api_key', aKey);
-
-            CONFIG.fbPageId = fbId;
-            CONFIG.readerUrl = rUrl;
-            CONFIG.apiKey = aKey;
-
-            hideModal();
-            logToConsole("Configuration updated. Re-indexing live links...");
-            fetchLatestStreamFromJina();
-        });
 
         function triggerPlaybackRefresh(reason, refreshFn) {
             const now = Date.now();
             if (now < playbackRefreshCooldown) return;
             playbackRefreshCooldown = now + 30000;
+            pushConsoleLog(`Playback Watch: ${reason}`);
             refreshFn();
         }
 
@@ -374,16 +351,15 @@
                 const existing = document.querySelector('script[src*="connect.facebook.net"]');
                 if (existing) {
                     existing.addEventListener('load', () => resolve(), { once: true });
-                    existing.addEventListener('error', () => reject(new Error('Facebook SDK failed to load')), { once: true });
+                    existing.addEventListener('error', () => reject(new Error('SDK failed')), { once: true });
                     return;
                 }
-
                 const script = document.createElement('script');
                 script.src = 'https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0';
                 script.async = true;
                 script.defer = true;
                 script.onload = () => resolve();
-                script.onerror = () => reject(new Error('Facebook SDK failed to load'));
+                script.onerror = () => reject(new Error('SDK failed'));
                 document.head.appendChild(script);
             });
         }
@@ -394,14 +370,11 @@
             facebookPlaybackTimer = window.setTimeout(() => {
                 const iframe = container.querySelector('iframe');
                 if (iframe && iframe.isConnected) {
-                    triggerPlaybackRefresh(`Embed ${videoId} stalled. Checking for changes...`, () => {
-                        logToConsole("Stall detected. Refreshing source engine...");
-                        fetchLatestStreamFromJina();
-                    });
+                    triggerPlaybackRefresh(`Embed ${videoId} stalled`, () => fetchLatestStreamFromJina());
                 }
             }, 20000);
 
-            loadFacebookSdk().catch(err => console.warn('Facebook SDK unavailable for playback monitoring:', err));
+            loadFacebookSdk().catch(err => console.warn('SDK configuration error:', err));
         }
 
         function getStoredVideoId(key) {
@@ -440,40 +413,29 @@
                     osc.stop(audioCtx.currentTime + delay + 0.15);
                 });
             } catch (e) {
-                console.warn("Audio alert blocked by browser interface rules.");
+                console.warn("Audio blocked by layout rules.");
             }
         }
 
         async function fetchFacebookVideoId() {
-            if (!CONFIG.fbPageId || !CONFIG.readerUrl) {
-                showModal();
-                return null;
-            }
-
             const timestamp = getFormattedTimestamp();
-            const targetUrl = `${CONFIG.readerUrl}https://www.facebook.com/${CONFIG.fbPageId}/live_videos?update=${timestamp}`;
+            const base = proxyBaseUrl.endsWith('/') ? proxyBaseUrl : `${proxyBaseUrl}/`;
+            const targetUrl = `${base}https://www.facebook.com/${fbUsername}/live_videos?update=${timestamp}`;
 
             try {
-                logToConsole("Checking proxy endpoint routing...");
-                const headers = {};
-                if (CONFIG.apiKey) {
-                    headers['Authorization'] = `Bearer ${CONFIG.apiKey}`;
-                }
-
-                const response = await fetch(targetUrl, { headers });
-                if (!response.ok) throw new Error(`HTTP status: ${response.status}`);
+                pushConsoleLog(`Checking endpoint...`);
+                const response = await fetch(targetUrl);
+                if (!response.ok) throw new Error('Network error');
 
                 const pageText = await response.text();
                 const matches = pageText.match(/\/videos\/(\d{15,18})/g);
 
                 if (matches && matches.length > 0) {
                     const videoId = matches[0].replace("/videos/", "");
-                    if (videoId) {
-                        return videoId;
-                    }
+                    if (videoId) return videoId;
                 }
             } catch (error) {
-                logToConsole(`Fetch failed: ${error.message}`);
+                pushConsoleLog(`Fetch failed: Network resource unreachable.`);
             }
             return null;
         }
@@ -483,24 +445,22 @@
                 const latestVideoId = await fetchFacebookVideoId();
                 if (latestVideoId) {
                     if (latestVideoId !== currentVideoId) {
-                        logToConsole(`New target stream dynamic array discovered! [ID: ${latestVideoId}]`);
+                        pushConsoleLog(`🚨 STREAM UPDATED! New ID: ${latestVideoId}`, true);
                         currentVideoId = latestVideoId;
                         saveStoredVideoId('fblive_videoId', latestVideoId);
                         triggerAlarmSound();
-                        showTopBanner();
                         deployIframe(latestVideoId);
                     } else {
-                        logToConsole("State clean: Source reference is up to date.");
+                        pushConsoleLog("Check complete: Matches cache.");
                     }
                 } else {
-                    logToConsole("State active: No active live streams indexed.");
+                    pushConsoleLog("Check complete: No active stream.");
                 }
             } catch (error) {
-                logToConsole(`Fetch execution fault.`);
+                pushConsoleLog("Parsing loop error.");
             }
         }
 
-        // Deploy functional full page embed 
         function deployIframe(id) {
             const container = document.getElementById('fb-live-wrapper');
             if (!id) {
@@ -509,7 +469,7 @@
             }
             container.innerHTML = `
                 <iframe 
-                    src="https://www.facebook.com/plugins/video.php?height=100%25&href=https%3A%2F%2Fwww.facebook.com%2F${CONFIG.fbPageId}%2Fvideos%2F${id}%2F&show_text=false&width=100%25&t=0&autoplay=true&mute=true" 
+                    src="https://www.facebook.com/plugins/video.php?height=314&href=https%3A%2F%2Fwww.facebook.com%2F${fbUsername}%2Fvideos%2F${id}%2F&show_text=false&width=560&t=0&autoplay=true&mute=true" 
                     scrolling="no" 
                     frameborder="0" 
                     allowfullscreen="true" 
@@ -520,40 +480,55 @@
             watchFacebookPlayback(container, id);
         }
 
-        function showTopBanner() {
-            const banner = document.getElementById('status-alert');
-            banner.style.display = 'block';
-            setTimeout(() => { banner.style.display = 'none'; }, 8000);
-        }
-
         function runTimeTicker() {
             const now = new Date();
-            const minutes = now.getMinutes();
-            const seconds = now.getSeconds();
-
-            if (minutes % 5 === 0 && seconds === 0) {
+            if (now.getMinutes() % 5 === 0 && now.getSeconds() === 0) {
                 fetchLatestStreamFromJina();
             }
         }
+
+        const modal = document.getElementById('config-modal');
+        const inputProxy = document.getElementById('input-proxy');
+        const inputFbUser = document.getElementById('input-fb-user');
+
+        function openModal() {
+            inputProxy.value = proxyBaseUrl;
+            inputFbUser.value = fbUsername;
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        document.getElementById('open-settings').addEventListener('click', openModal);
+
+        document.getElementById('btn-save-config').addEventListener('click', () => {
+            proxyBaseUrl = inputProxy.value.trim() || "https://r.jina.ai/";
+            fbUsername = inputFbUser.value.trim() || "ayaldev";
+
+            localStorage.setItem('cfg_proxy_base', proxyBaseUrl);
+            localStorage.setItem('cfg_fb_username', fbUsername);
+
+            closeModal();
+            pushConsoleLog(`Config updated target -> ${fbUsername}`);
+            fetchLatestStreamFromJina();
+        });
 
         document.getElementById('manual-refresh').addEventListener('click', () => {
             fetchLatestStreamFromJina();
         });
 
         window.addEventListener('DOMContentLoaded', () => {
-            currentVideoId = getStoredVideoId('fblive_videoId');
-
-            if (!CONFIG.fbPageId) {
-                logToConsole("Initialization initialization parameters missing.");
-                showModal();
-            } else {
-                logToConsole("System initialized. Monitoring scheduled intervals.");
-                if (currentVideoId) {
-                    deployIframe(currentVideoId);
-                }
-                fetchLatestStreamFromJina();
+            if (!localStorage.getItem('cfg_proxy_base') || !localStorage.getItem('cfg_fb_username')) {
+                openModal();
             }
 
+            currentVideoId = getStoredVideoId('fblive_videoId');
+            if (currentVideoId) {
+                deployIframe(currentVideoId);
+            }
+            fetchLatestStreamFromJina();
             setInterval(runTimeTicker, 1000);
         });
     </script>
