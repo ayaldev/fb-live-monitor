@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>fb-live-monitor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121214;
+            --panel-bg: #1a1a1e;
+            --border-color: #2c2c35;
+            --accent-green: #22c55e;
+            --accent-blue: #3b82f6;
+            --text-main: #e4e4e7;
+            --text-muted: #a1a1aa;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            font-family: 'Roboto Mono', monospace;
+            color: var(--text-main);
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        #status-alert {
+            background: #ef4444;
+            color: #fff;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: none;
+            width: 100%;
+            box-sizing: border-box;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 999;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .video-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        .video-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Overlay Console Box - Top Right */
+        .console-overlay {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            pointer-events: none;
+            /* Let clicks pass through to video */
+            max-width: 400px;
+            font-size: 0.8rem;
+            text-align: right;
+        }
+
+        .log-entry {
+            background: rgba(9, 9, 11, 0.85);
+            border: 1px solid rgba(44, 44, 53, 0.7);
+            backdrop-filter: blur(4px);
+            color: var(--accent-green);
+            padding: 6px 12px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.3s ease forwards;
+            transition: opacity 1s ease, transform 1s ease;
+        }
+
+        .log-entry.fade-out {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Floating Controls Container at Bottom Right */
+        .floating-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 8px;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .control-btn:hover {
+            border-color: var(--text-muted);
+            background: #222227;
+            color: #fff;
+        }
+
+        .control-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Modal/Popup Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: all 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 450px;
+            border-radius: 8px;
+            padding: 25px;
+            box-sizing: border-box;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-card h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            color: #fff;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            background: #09090b;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            box-sizing: border-box;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.9rem;
+            border-radius: 4px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .modal-actions {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="status-alert">🚨 STREAM UPDATED! Loading New Live Feed...</div>
+
+    <div id="fb-live-wrapper" class="video-container"></div>
+
+    <!-- Log entry stack directly in front of the video player -->
+    <div id="console-overlay" class="console-overlay"></div>
+
+    <!-- Floating UI Controls Stack -->
+    <div class="floating-controls">
+        <button id="open-settings-btn" class="control-btn" title="Edit Configuration Matrices">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+        </button>
+        <button id="manual-refresh" class="control-btn" title="Force Refresh Stream Check">
+            <svg viewBox="0 0 24 24">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Configuration Modal Setup -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-card">
+            <h2>System Configuration</h2>
+            <div class="form-group">
+                <label for="cfg-fb-id">Facebook Page ID / Username</label>
+                <input type="text" id="cfg-fb-id" placeholder="e.g., dzrhnews">
+            </div>
+            <div class="form-group">
+                <label for="cfg-reader-url">Reader URL Endpoint</label>
+                <input type="text" id="cfg-reader-url" placeholder="e.g., https://r.jina.ai/">
+            </div>
+            <div class="form-group">
+                <label for="cfg-api-key">Bearer API Key (Optional)</label>
+                <input type="password" id="cfg-api-key" placeholder="Leave blank if not required">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" id="save-settings-btn">Save & Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentVideoId = "";
+        let playbackRefreshCooldown = 0;
+        let facebookPlaybackTimer = null;
+
+        let CONFIG = {
+            fbPageId: localStorage.getItem('monitor_fb_id') || '',
+            readerUrl: localStorage.getItem('monitor_reader_url') || 'https://r.jina.ai/',
+            apiKey: localStorage.getItem('monitor_api_key') || ''
+        };
+
+        const consoleOverlay = document.getElementById('console-overlay');
+
+        function logToConsole(msg) {
+            const timestamp = new Date().toLocaleTimeString();
+
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `[${timestamp}] > ${msg}`;
+
+            // Append top down
+            consoleOverlay.appendChild(logEntry);
+
+            // Smoothly remove item after fade configuration interval
+            setTimeout(() => {
+                logEntry.classList.add('fade-out');
+                setTimeout(() => {
+                    logEntry.remove();
+                }, 1000);
+            }, 5000);
+        }
+
+        const modal = document.getElementById('settings-modal');
+        function showModal() {
+            document.getElementById('cfg-fb-id').value = CONFIG.fbPageId;
+            document.getElementById('cfg-reader-url').value = CONFIG.readerUrl;
+            document.getElementById('cfg-api-key').value = CONFIG.apiKey;
+            modal.classList.add('active');
+        }
+
+        function hideModal() {
+            modal.classList.remove('active');
+        }
+
+        document.getElementById('open-settings-btn').addEventListener('click', showModal);
+        document.getElementById('save-settings-btn').addEventListener('click', () => {
+            const fbId = document.getElementById('cfg-fb-id').value.trim();
+            let rUrl = document.getElementById('cfg-reader-url').value.trim();
+            const aKey = document.getElementById('cfg-api-key').value.trim();
+
+            if (!fbId || !rUrl) {
+                alert('Facebook Page ID and Reader URL endpoint are required elements.');
+                return;
+            }
+
+            if (!rUrl.endsWith('/')) rUrl += '/';
+
+            localStorage.setItem('monitor_fb_id', fbId);
+            localStorage.setItem('monitor_reader_url', rUrl);
+            localStorage.setItem('monitor_api_key', aKey);
+
+            CONFIG.fbPageId = fbId;
+            CONFIG.readerUrl = rUrl;
+            CONFIG.apiKey = aKey;
+
+            hideModal();
+            logToConsole("Configuration updated. Re-indexing live links...");
+            fetchLatestStreamFromJina();
+        });
+
+        function triggerPlaybackRefresh(reason, refreshFn) {
+            const now = Date.now();
+            if (now < playbackRefreshCooldown) return;
+            playbackRefreshCooldown = now + 30000;
+            refreshFn();
+        }
+
+        function loadFacebookSdk() {
+            if (window.FB) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector('script[src*="connect.facebook.net"]');
+                if (existing) {
+                    existing.addEventListener('load', () => resolve(), { once: true });
+                    existing.addEventListener('error', () => reject(new Error('Facebook SDK failed to load')), { once: true });
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0';
+                script.async = true;
+                script.defer = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('Facebook SDK failed to load'));
+                document.head.appendChild(script);
+            });
+        }
+
+        function watchFacebookPlayback(container, videoId) {
+            if (!container) return;
+            clearTimeout(facebookPlaybackTimer);
+            facebookPlaybackTimer = window.setTimeout(() => {
+                const iframe = container.querySelector('iframe');
+                if (iframe && iframe.isConnected) {
+                    triggerPlaybackRefresh(`Embed ${videoId} stalled. Checking for changes...`, () => {
+                        logToConsole("Stall detected. Refreshing source engine...");
+                        fetchLatestStreamFromJina();
+                    });
+                }
+            }, 20000);
+
+            loadFacebookSdk().catch(err => console.warn('Facebook SDK unavailable for playback monitoring:', err));
+        }
+
+        function getStoredVideoId(key) {
+            return localStorage.getItem(key) || "";
+        }
+
+        function saveStoredVideoId(key, value) {
+            if (!value) return;
+            localStorage.setItem(key, value);
+        }
+
+        function getFormattedTimestamp() {
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const year = String(now.getFullYear()).slice(-2);
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            return `${month}${day}${year}${hours}${minutes}${seconds}`;
+        }
+
+        function triggerAlarmSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                [0, 0.2].forEach((delay) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime + delay);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.15);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + delay);
+                    osc.stop(audioCtx.currentTime + delay + 0.15);
+                });
+            } catch (e) {
+                console.warn("Audio alert blocked by browser interface rules.");
+            }
+        }
+
+        async function fetchFacebookVideoId() {
+            if (!CONFIG.fbPageId || !CONFIG.readerUrl) {
+                showModal();
+                return null;
+            }
+
+            const timestamp = getFormattedTimestamp();
+            const targetUrl = `${CONFIG.readerUrl}https://www.facebook.com/${CONFIG.fbPageId}/live_videos?update=${timestamp}`;
+
+            try {
+                logToConsole("Checking proxy endpoint routing...");
+                const headers = {};
+                if (CONFIG.apiKey) {
+                    headers['Authorization'] = `Bearer ${CONFIG.apiKey}`;
+                }
+
+                const response = await fetch(targetUrl, { headers });
+                if (!response.ok) throw new Error(`HTTP status: ${response.status}`);
+
+                const pageText = await response.text();
+                const matches = pageText.match(/\/videos\/(\d{15,18})/g);
+
+                if (matches && matches.length > 0) {
+                    const videoId = matches[0].replace("/videos/", "");
+                    if (videoId) {
+                        return videoId;
+                    }
+                }
+            } catch (error) {
+                logToConsole(`Fetch failed: ${error.message}`);
+            }
+            return null;
+        }
+
+        async function fetchLatestStreamFromJina() {
+            try {
+                const latestVideoId = await fetchFacebookVideoId();
+                if (latestVideoId) {
+                    if (latestVideoId !== currentVideoId) {
+                        logToConsole(`New target stream dynamic array discovered! [ID: ${latestVideoId}]`);
+                        currentVideoId = latestVideoId;
+                        saveStoredVideoId('fblive_videoId', latestVideoId);
+                        triggerAlarmSound();
+                        showTopBanner();
+                        deployIframe(latestVideoId);
+                    } else {
+                        logToConsole("State clean: Source reference is up to date.");
+                    }
+                } else {
+                    logToConsole("State active: No active live streams indexed.");
+                }
+            } catch (error) {
+                logToConsole(`Fetch execution fault.`);
+            }
+        }
+
+        // Deploy functional full page embed 
+        function deployIframe(id) {
+            const container = document.getElementById('fb-live-wrapper');
+            if (!id) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = `
+                <iframe 
+                    src="https://www.facebook.com/plugins/video.php?height=100%25&href=https%3A%2F%2Fwww.facebook.com%2F${CONFIG.fbPageId}%2Fvideos%2F${id}%2F&show_text=false&width=100%25&t=0&autoplay=true&mute=true" 
+                    scrolling="no" 
+                    frameborder="0" 
+                    allowfullscreen="true" 
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                </iframe>
+            `;
+            watchFacebookPlayback(container, id);
+        }
+
+        function showTopBanner() {
+            const banner = document.getElementById('status-alert');
+            banner.style.display = 'block';
+            setTimeout(() => { banner.style.display = 'none'; }, 8000);
+        }
+
+        function runTimeTicker() {
+            const now = new Date();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            if (minutes % 5 === 0 && seconds === 0) {
+                fetchLatestStreamFromJina();
+            }
+        }
+
+        document.getElementById('manual-refresh').addEventListener('click', () => {
+            fetchLatestStreamFromJina();
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            currentVideoId = getStoredVideoId('fblive_videoId');
+
+            if (!CONFIG.fbPageId) {
+                logToConsole("Initialization initialization parameters missing.");
+                showModal();
+            } else {
+                logToConsole("System initialized. Monitoring scheduled intervals.");
+                if (currentVideoId) {
+                    deployIframe(currentVideoId);
+                }
+                fetchLatestStreamFromJina();
+            }
+
+            setInterval(runTimeTicker, 1000);
+        });
+    </script>
+</body>
+
+</html>
